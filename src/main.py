@@ -1,4 +1,4 @@
-from src.instance import VmInstance, DbaasInstance, K8saasInstance, InstanceTypeDoesNotExist
+from src.instance import VmInstance, DbaasInstance, K8saasInstance, StressTestInstance, InstanceTypeDoesNotExist
 
 import prometheus_client
 import os
@@ -28,6 +28,8 @@ def main():
     metric_port = int(os.environ.get('METRIC_PORT', '8000'))
     has_defect = os.environ.get('HAS_DEFECT', 'False').lower() == 'true'
     # TODO: implement a way of setting a specific defect for each instance
+    
+    time_series_count = int(os.environ.get('TIME_SERIES_COUNT', '1'))
 
     metric_generator = ...
     match instance_type.upper():
@@ -48,11 +50,21 @@ def main():
                 metrics_port=metric_port
             )
         case 'K8SAAS':
-            metric_generator = K8saasInstance(    id=instance_id,
+            metric_generator = K8saasInstance(
+                id=instance_id,
                 tenant_id=tenant_id,
                 region=instance_region,
                 has_random_defects=has_defect,
                 metrics_port=metric_port
+            )
+        case 'STRESS_TEST':
+            metric_generator = StressTestInstance(
+                id=instance_id,
+                tenant_id=tenant_id,
+                region=instance_region,
+                has_random_defects=has_defect,
+                metrics_port=metric_port,
+                time_series_count=time_series_count
             )
         case _ :
             raise InstanceTypeDoesNotExist(f'Instance type {instance_type} does not exists')
@@ -64,6 +76,8 @@ def main():
     logger.info(f'Tenant id: {tenant_id}')
     logger.info(f'Region: {instance_region}')
     logger.info(f'Has defects: {metric_generator.defects}')
+    # logger.info(f'Time series count: {time_series_count}')
+    logger.info(f'Starting metrics server...')
     metric_generator.start_metrics_server(scrape_interval_seconds=scrape_interval)
 
 if __name__ == '__main__':

@@ -186,7 +186,7 @@ class DbaasInstance(Instance):
             "memory_usage": (0, 80),
             "storage_usage": (20, 80),
             "network_usage": (0, 80),
-            "db_connections": (0, 80),
+            "db_connections": (10, 80),
             "db_queries": (0, 80),
             "query_latency": (5, 50),
             "errors": (0, 0),
@@ -286,8 +286,11 @@ class K8saasInstance(Instance):
             "storage_usage": (0, 80),
             "network_usage": (0, 80),
             "pods": (200, 200),
+            "pods_down": (0, 0),
             "services": (40, 40),
+            "services_down": (40, 40),
             "nodes": (5, 5),
+            "nodes_down": (0, 0),
             "up": (1, 1),
         }
 
@@ -331,12 +334,74 @@ class K8saasInstance(Instance):
         self.gauge_metrics["pods"] = Gauge(
             "k8saas_pods", "Number of pods", self.K8SAAS_LABELS
         )
+        self.gauge_metrics["pods_down"] = Gauge(
+            "k8saas_pods_down", "Number of pods not in ready state", self.K8SAAS_LABELS
+        )
         self.gauge_metrics["services"] = Gauge(
-            "k8saas_services", "Number of services", self.K8SAAS_LABELS
+            "k8saas_services", "Number of services in the cluster", self.K8SAAS_LABELS
+        )
+        self.gauge_metrics["services_down"] = Gauge(
+            "k8saas_services_down", "Number of services down", self.K8SAAS_LABELS
         )
         self.gauge_metrics["nodes"] = Gauge(
-            "k8saas_nodes", "Number of nodes", self.K8SAAS_LABELS
+            "k8saas_nodes", "Number of nodes in the cluster", self.K8SAAS_LABELS
+        )
+        self.gauge_metrics["nodes_down"] = Gauge(
+            "k8saas_nodes_down", "Number of nodes down in the cluster", self.K8SAAS_LABELS
         )
         self.gauge_metrics["up"] = Gauge(
             "up", "K8saaS instance status", self.K8SAAS_LABELS
         )
+
+class StressTestInstance(Instance):
+    """
+    Creates a stress test instance that will generate tons of time series.
+    This is achieved by creating a lot of distinc gauge metrics, creating many time series.
+    For now, creates only a gauges. 
+    """
+    STRESS_TEST_LABELS = ["instance_id", "tenant_id", "region"]
+    STRESS_TEST_DEFECTS = []
+
+    def __init__(
+        self,
+        id: str,
+        tenant_id: str,
+        region: str,
+        metrics_port: int,
+        has_random_defects: bool = False,
+        defects: list[str] = [],
+        time_series_count: int = 100,
+    ):
+        super().__init__(id, tenant_id, region, metrics_port)
+        self.label_tuple = (id, tenant_id, region)
+
+        """
+        Generating time_series_count labels for the stress test instance
+        """
+        self.time_series_count = time_series_count
+        self._create_metrics()
+
+
+        self.defects = defects
+        self.metric_values = self._set_metrics_possible_values()
+
+    def _create_metrics(self) -> None:
+        """
+        Creates a stress_test gauge metric with time_series_count labels
+        """
+        for i in range(self.time_series_count):
+            metric_name = f"stress_test_gauge_{i}"
+            self.gauge_metrics[metric_name] = Gauge(
+                metric_name, f"A Gauge of other many. Index: {i}",  self.STRESS_TEST_LABELS
+            )
+
+    def _set_metrics_possible_values(self) -> dict[str, tuple[int]]:
+        """
+        Sets the range of possible values for the metrics.
+        """
+        metrics_possible_values = dict()
+        for i in range(self.time_series_count):
+            metric_name = f"stress_test_gauge_{i}"
+            metrics_possible_values[metric_name] = (0, 100)
+
+        return metrics_possible_values
