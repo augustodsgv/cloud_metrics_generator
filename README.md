@@ -20,6 +20,7 @@ Finally run the container. It require the following environment variables
 * `INSTANCE_REGION`->Suposed region where the instance is running
 It also supports some additional configurations
 * `SCRAPE_INTERVAL`->Time in seconds that it takes to generate a new set of metrics. Should match the scrape interval of the prometheus.
+* `TIME_SERIES_COUNT`->Indicates the amount of time series that stress test will generate. Used only by stress test 
 
 Finally, run it:
 ```sh
